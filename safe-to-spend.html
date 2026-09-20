@@ -1,0 +1,1372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Safe-to-Spend — BNPL Budget Prototype</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    box-sizing: border-box;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+
+    --brand: #5B3DF5;
+    --brand-ink: #3C27B8;
+    --brand-tint: #EFEBFF;
+    --lime: #C6FF6B;
+    --lime-ink: #3C5A0B;
+    --bg: #F7F6FB;
+    --surface: #FFFFFF;
+    --surface-2: #FBFAFF;
+    --border: #E7E4F3;
+    --ink: #17142A;
+    --ink-soft: #55506B;
+    --ink-faint: #8B87A0;
+    --success: #1F9D67;
+    --success-tint: #E6F7EF;
+    --warning: #B7791F;
+    --warning-tint: #FBF1DE;
+    --danger: #D5333B;
+    --danger-tint: #FCEAEA;
+    --radius-sm: 10px;
+    --radius-md: 16px;
+    --radius-lg: 22px;
+    --radius-pill: 999px;
+    --shadow-card: 0 1px 2px rgba(23,20,42,0.04), 0 8px 24px -12px rgba(23,20,42,0.10);
+    --font-display: 'Manrope', 'Segoe UI', system-ui, sans-serif;
+    --font-body: 'Inter', 'Segoe UI', system-ui, sans-serif;
+  }
+
+  :root:not([data-theme="light"]) {
+    @media (prefers-color-scheme: dark) {
+      --bg: #121022;
+      --surface: #1B1832;
+      --surface-2: #211D3C;
+      --border: #322D52;
+      --ink: #F3F1FC;
+      --ink-soft: #C3BFDA;
+      --ink-faint: #8C87A8;
+      --brand-tint: #2A2350;
+      --success-tint: #12321F;
+      --warning-tint: #3A2C0F;
+      --danger-tint: #3A1417;
+      --shadow-card: 0 1px 2px rgba(0,0,0,0.2), 0 8px 24px -12px rgba(0,0,0,0.5);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #121022;
+    --surface: #1B1832;
+    --surface-2: #211D3C;
+    --border: #322D52;
+    --ink: #F3F1FC;
+    --ink-soft: #C3BFDA;
+    --ink-faint: #8C87A8;
+    --brand-tint: #2A2350;
+    --success-tint: #12321F;
+    --warning-tint: #3A2C0F;
+    --danger-tint: #3A1417;
+    --shadow-card: 0 1px 2px rgba(0,0,0,0.2), 0 8px 24px -12px rgba(0,0,0,0.5);
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-padding-top: env(safe-area-inset-top, 0px); }
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--font-body);
+    -webkit-font-smoothing: antialiased;
+    line-height: 1.5;
+  }
+  h1, h2, h3, .num { font-family: var(--font-display); }
+  a { color: var(--brand); }
+  button { font-family: inherit; }
+
+  .skip-link {
+    position: absolute; left: -999px; top: 0;
+    background: var(--brand); color: #fff; padding: 10px 16px; border-radius: 0 0 8px 0; z-index: 100;
+  }
+  .skip-link:focus { left: 0; }
+
+  :focus-visible { outline: 2.5px solid var(--brand); outline-offset: 2px; }
+
+  .topbar {
+    position: sticky; top: env(safe-area-inset-top, 0px); z-index: 20;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+  }
+  .topbar-inner {
+    max-width: 1180px; margin: 0 auto;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 20px;
+    gap: 12px;
+  }
+  .brandmark { display: flex; align-items: center; gap: 10px; min-width: 0; }
+  .brandmark .glyph {
+    width: 34px; height: 34px; border-radius: 10px; flex-shrink: 0;
+    background: linear-gradient(155deg, var(--brand), var(--brand-ink));
+    display: flex; align-items: center; justify-content: center;
+  }
+  .brandmark .glyph svg { width: 18px; height: 18px; }
+  .brandmark .titles { min-width: 0; }
+  .brandmark h1 { margin: 0; font-size: 1.05rem; font-weight: 800; letter-spacing: -0.01em; }
+  .brandmark .tag {
+    font-size: 0.72rem; color: var(--ink-faint); font-weight: 600;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .btn-reset-top {
+    border: 1px solid var(--border); background: var(--surface);
+    color: var(--ink-soft); font-weight: 600; font-size: 0.85rem;
+    padding: 9px 16px; border-radius: var(--radius-pill); cursor: pointer;
+    white-space: nowrap;
+  }
+  .btn-reset-top:hover { border-color: var(--brand); color: var(--brand); }
+
+  .shell { max-width: 1180px; margin: 0 auto; padding: 22px 20px 80px; }
+
+  .layout {
+    display: grid;
+    grid-template-columns: 360px 1fr;
+    gap: 22px;
+    align-items: start;
+  }
+  @media (max-width: 880px) {
+    .layout { grid-template-columns: 1fr; }
+  }
+
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-card);
+    padding: 22px;
+  }
+  .input-panel { position: sticky; top: calc(70px + env(safe-area-inset-top, 0px)); }
+  @media (max-width: 880px) { .input-panel { position: static; } }
+
+  .panel h2 {
+    margin: 0 0 4px; font-size: 1rem; font-weight: 800;
+  }
+  .panel .panel-sub { margin: 0 0 16px; font-size: 0.82rem; color: var(--ink-faint); }
+
+  fieldset { border: none; margin: 0 0 18px; padding: 0; }
+  fieldset legend {
+    font-size: 0.78rem; font-weight: 700; color: var(--ink-soft);
+    margin-bottom: 10px; padding: 0;
+  }
+  .field { margin-bottom: 12px; }
+  .field label {
+    display: block; font-size: 0.8rem; font-weight: 600; color: var(--ink-soft);
+    margin-bottom: 6px;
+  }
+  .field input[type="text"], .field input[type="number"] {
+    width: 100%; padding: 11px 14px; font-size: 0.92rem;
+    border: 1.5px solid var(--border); border-radius: var(--radius-sm);
+    background: var(--surface-2); color: var(--ink);
+    transition: border-color .15s ease;
+  }
+  .field input:focus { border-color: var(--brand); background: var(--surface); }
+  .field .hint { font-size: 0.72rem; color: var(--ink-faint); margin-top: 4px; }
+  .field .field-error { font-size: 0.75rem; color: var(--danger); margin-top: 4px; display: none; font-weight: 600; }
+  .field.has-error input { border-color: var(--danger); }
+  .field.has-error .field-error { display: block; }
+
+  .installment-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;
+  }
+  .installment-chip {
+    border: 1.5px solid var(--border); background: var(--surface-2);
+    border-radius: var(--radius-md); padding: 10px 6px; text-align: center;
+    cursor: pointer; font-weight: 700; font-size: 0.85rem; color: var(--ink-soft);
+    transition: all .15s ease;
+  }
+  .installment-chip:hover { border-color: var(--brand); }
+  .installment-chip.active {
+    background: var(--ink); border-color: var(--ink); color: #fff;
+  }
+  .installment-chip .chip-sub { display: block; font-size: 0.65rem; font-weight: 500; color: inherit; opacity: 0.65; margin-top: 2px; }
+
+  .btn-primary {
+    width: 100%; background: var(--ink); color: #fff; border: none;
+    padding: 14px; border-radius: var(--radius-pill); font-weight: 700; font-size: 0.95rem;
+    cursor: pointer; margin-top: 6px; transition: transform .1s ease, background .15s ease;
+  }
+  .btn-primary:hover { background: var(--brand); }
+  .btn-primary:active { transform: scale(0.98); }
+  .btn-secondary {
+    width: 100%; background: transparent; color: var(--ink-soft); border: 1.5px solid var(--border);
+    padding: 12px; border-radius: var(--radius-pill); font-weight: 700; font-size: 0.88rem;
+    cursor: pointer; margin-top: 8px;
+  }
+  .btn-secondary:hover { border-color: var(--ink-soft); color: var(--ink); }
+  .btn-ghost {
+    background: transparent; border: none; color: var(--brand); font-weight: 700;
+    font-size: 0.82rem; cursor: pointer; padding: 6px 0;
+  }
+  .btn-small {
+    border: 1.5px solid var(--border); background: var(--surface-2); color: var(--ink-soft);
+    padding: 7px 13px; border-radius: var(--radius-pill); font-size: 0.78rem; font-weight: 700; cursor: pointer;
+  }
+  .btn-small:hover { border-color: var(--danger); color: var(--danger); }
+  .btn-small.primary-small { background: var(--ink); color: #fff; border-color: var(--ink); }
+  .btn-small.primary-small:hover { background: var(--brand); border-color: var(--brand); color:#fff; }
+
+  .results { display: flex; flex-direction: column; gap: 18px; }
+
+  .hero-card {
+    background: linear-gradient(155deg, var(--brand) 0%, var(--brand-ink) 100%);
+    color: #fff; border-radius: var(--radius-lg); padding: 26px; position: relative; overflow: hidden;
+    box-shadow: var(--shadow-card);
+  }
+  .hero-card .hero-label { font-size: 0.8rem; font-weight: 700; opacity: 0.85; margin-bottom: 6px; }
+  .hero-card .hero-figure { font-size: 2.6rem; font-weight: 800; letter-spacing: -0.02em; margin: 0 0 4px; }
+  .hero-card .hero-note { font-size: 0.8rem; opacity: 0.8; max-width: 46ch; }
+  .hero-badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: rgba(255,255,255,0.16); padding: 5px 12px; border-radius: var(--radius-pill);
+    font-size: 0.75rem; font-weight: 700; margin-top: 14px;
+  }
+  .hero-badge.status-comfortable { background: rgba(198,255,107,0.28); color: var(--lime); }
+  .hero-badge.status-caution { background: rgba(255,196,84,0.28); color: #FFD98A; }
+  .hero-badge.status-high { background: rgba(255,110,110,0.28); color: #FFB3B3; }
+  .hero-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 14px; margin-top: 20px; padding-top: 18px; border-top: 1px solid rgba(255,255,255,0.18);
+  }
+  .hero-grid .stat-label { font-size: 0.7rem; opacity: 0.75; font-weight: 600; margin-bottom: 3px; }
+  .hero-grid .stat-value { font-size: 1.15rem; font-weight: 800; }
+  .hero-explain {
+    margin-top: 16px; font-size: 0.76rem; opacity: 0.78; line-height: 1.5;
+    background: rgba(0,0,0,0.12); padding: 10px 14px; border-radius: var(--radius-sm);
+  }
+
+  .card-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+  @media (max-width: 700px) { .card-grid { grid-template-columns: 1fr 1fr; } }
+  @media (max-width: 460px) { .card-grid { grid-template-columns: 1fr; } }
+  .mini-card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md);
+    padding: 16px; box-shadow: var(--shadow-card);
+  }
+  .mini-card .mini-label { font-size: 0.74rem; color: var(--ink-faint); font-weight: 600; margin-bottom: 6px; }
+  .mini-card .mini-value { font-size: 1.3rem; font-weight: 800; }
+  .mini-card .mini-value.neg { color: var(--danger); }
+
+  .section-title { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 14px; }
+  .section-title h2 { margin: 0; font-size: 1.02rem; font-weight: 800; }
+  .section-title .section-note { font-size: 0.74rem; color: var(--ink-faint); font-weight: 600; }
+
+  .health-bar-track {
+    height: 10px; background: var(--surface-2); border-radius: var(--radius-pill); overflow: hidden;
+    border: 1px solid var(--border);
+  }
+  .health-bar-fill { height: 100%; border-radius: var(--radius-pill); transition: width .3s ease; }
+  .health-bar-fill.comfortable { background: var(--success); }
+  .health-bar-fill.caution { background: var(--warning); }
+  .health-bar-fill.high { background: var(--danger); }
+  .health-row { display: flex; justify-content: space-between; font-size: 0.8rem; color: var(--ink-soft); margin-top: 8px; font-weight: 600; }
+  .status-pill { display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; border-radius: var(--radius-pill); font-size: 0.78rem; font-weight: 700; }
+  .status-pill.comfortable { background: var(--success-tint); color: var(--success); }
+  .status-pill.caution { background: var(--warning-tint); color: var(--warning); }
+  .status-pill.high { background: var(--danger-tint); color: var(--danger); }
+  .health-explain { font-size: 0.8rem; color: var(--ink-soft); margin-top: 12px; line-height: 1.5; }
+
+  .rec-card {
+    background: var(--brand-tint); border: 1px solid var(--border); border-radius: var(--radius-md);
+    padding: 18px; display: flex; flex-direction: column; gap: 10px;
+  }
+  .rec-top { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+  .rec-top .rec-plan { font-size: 1.15rem; font-weight: 800; }
+  .rec-reason { font-size: 0.85rem; color: var(--ink-soft); line-height: 1.5; }
+  .rec-figures { display: flex; gap: 20px; flex-wrap: wrap; margin-top: 4px; }
+  .rec-figures div span { display: block; }
+  .rec-figures .rf-label { font-size: 0.7rem; color: var(--ink-faint); font-weight: 600; }
+  .rec-figures .rf-value { font-size: 0.98rem; font-weight: 800; }
+
+  .insights-label {
+    display: inline-block; font-size: 0.68rem; font-weight: 700; text-transform: none;
+    color: var(--ink-faint); background: var(--surface-2); border: 1px solid var(--border);
+    padding: 3px 10px; border-radius: var(--radius-pill); margin-bottom: 12px;
+  }
+  .insight-list { display: flex; flex-direction: column; gap: 10px; }
+  .insight-item {
+    display: flex; gap: 10px; align-items: flex-start; padding: 12px 14px;
+    border-radius: var(--radius-sm); font-size: 0.85rem; line-height: 1.5; border: 1px solid var(--border);
+  }
+  .insight-item.positive { background: var(--success-tint); border-color: transparent; }
+  .insight-item.caution { background: var(--warning-tint); border-color: transparent; }
+  .insight-item.high { background: var(--danger-tint); border-color: transparent; }
+  .insight-item.neutral { background: var(--surface-2); }
+  .insight-dot { width: 7px; height: 7px; border-radius: 50%; margin-top: 6px; flex-shrink: 0; }
+  .insight-item.positive .insight-dot { background: var(--success); }
+  .insight-item.caution .insight-dot { background: var(--warning); }
+  .insight-item.high .insight-dot { background: var(--danger); }
+  .insight-item.neutral .insight-dot { background: var(--ink-faint); }
+
+  .timeline-wrap { overflow-x: auto; }
+  table.timeline-table { width: 100%; border-collapse: collapse; min-width: 480px; font-size: 0.85rem; }
+  table.timeline-table th, table.timeline-table td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--border); }
+  table.timeline-table th { color: var(--ink-faint); font-weight: 700; font-size: 0.72rem; }
+  table.timeline-table td { font-weight: 600; }
+  table.timeline-table tr:last-child td { border-bottom: none; font-weight: 800; }
+
+  .alert-list { display: flex; flex-direction: column; gap: 10px; }
+  .alert-item { display: flex; gap: 10px; padding: 12px 14px; border-radius: var(--radius-sm); font-size: 0.85rem; border: 1px solid; }
+  .alert-item.warning { background: var(--warning-tint); border-color: transparent; color: var(--warning); }
+  .alert-item.danger { background: var(--danger-tint); border-color: transparent; color: var(--danger); }
+  .alert-item.info { background: var(--brand-tint); border-color: transparent; color: var(--brand-ink); }
+  .alert-item .alert-icon { font-weight: 800; flex-shrink: 0; }
+  .alert-item .alert-text strong { display: block; margin-bottom: 2px; }
+  .alert-item .alert-text span { font-weight: 500; opacity: 0.9; }
+  .empty-alerts { font-size: 0.85rem; color: var(--ink-faint); padding: 6px 0; }
+
+  .whatif-table-wrap { overflow-x: auto; }
+  table.whatif-table { width: 100%; border-collapse: collapse; min-width: 620px; font-size: 0.83rem; }
+  table.whatif-table th, table.whatif-table td { padding: 11px 12px; text-align: left; border-bottom: 1px solid var(--border); }
+  table.whatif-table th { color: var(--ink-faint); font-weight: 700; font-size: 0.7rem; }
+  table.whatif-table tr.selected-row td { background: var(--brand-tint); font-weight: 700; }
+  table.whatif-table tr.selected-row td:first-child { border-radius: 8px 0 0 8px; }
+  table.whatif-table tr.selected-row td:last-child { border-radius: 0 8px 8px 0; }
+
+  .txn-list { display: flex; flex-direction: column; gap: 10px; }
+  .txn-item {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    padding: 13px 14px; border: 1px solid var(--border); border-radius: var(--radius-sm);
+    flex-wrap: wrap;
+  }
+  .txn-main { min-width: 0; }
+  .txn-main .txn-name { font-weight: 700; font-size: 0.9rem; }
+  .txn-main .txn-meta { font-size: 0.75rem; color: var(--ink-faint); margin-top: 2px; }
+  .txn-figures { display: flex; gap: 16px; align-items: center; }
+  .txn-figures .txn-total { font-weight: 800; font-size: 0.92rem; }
+  .empty-state { text-align: center; padding: 28px 10px; color: var(--ink-faint); font-size: 0.85rem; }
+  .empty-state .empty-icon { font-size: 1.6rem; margin-bottom: 6px; }
+
+  .goal-form { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 16px; }
+  @media (max-width: 600px) { .goal-form { grid-template-columns: 1fr; } }
+  .goal-progress-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; }
+  .goal-progress-head .goal-name { font-weight: 800; font-size: 1rem; }
+  .goal-progress-head .goal-pct { font-weight: 800; color: var(--brand); }
+  .goal-bar-track { height: 14px; background: var(--surface-2); border-radius: var(--radius-pill); overflow: hidden; border: 1px solid var(--border); }
+  .goal-bar-fill { height: 100%; background: linear-gradient(90deg, var(--brand), var(--lime)); border-radius: var(--radius-pill); transition: width .3s ease; }
+  .goal-figures { display: flex; gap: 22px; margin-top: 10px; flex-wrap: wrap; }
+  .goal-figures div span { display: block; }
+  .goal-figures .gf-label { font-size: 0.72rem; color: var(--ink-faint); font-weight: 600; }
+  .goal-figures .gf-value { font-size: 0.95rem; font-weight: 800; }
+  .goal-actions { display: flex; gap: 10px; margin-top: 14px; }
+  .goal-actions button { flex: 1; }
+
+  .export-row { display: flex; gap: 12px; flex-wrap: wrap; }
+  .export-row button { flex: 1; min-width: 160px; }
+
+  .disclaimer {
+    font-size: 0.78rem; color: var(--ink-faint); line-height: 1.6;
+    background: var(--surface-2); border: 1px dashed var(--border); border-radius: var(--radius-md);
+    padding: 16px 18px;
+  }
+  .disclaimer strong { color: var(--ink-soft); }
+
+  .toast-region { position: fixed; bottom: calc(20px + env(safe-area-inset-bottom, 0px)); left: 50%; transform: translateX(-50%); z-index: 50; display: flex; flex-direction: column; gap: 8px; align-items: center; }
+  .toast {
+    background: var(--ink); color: #fff; padding: 11px 20px; border-radius: var(--radius-pill);
+    font-size: 0.85rem; font-weight: 600; box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+    animation: toast-in .18s ease;
+  }
+  @keyframes toast-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; animation: none !important; }
+  }
+
+  .visually-hidden {
+    position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap;
+  }
+</style>
+</head>
+<body>
+<a href="#main-content" class="skip-link">Skip to content</a>
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <div class="brandmark">
+      <span class="glyph" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none"><path d="M4 12a8 8 0 1 1 8 8" stroke="#C6FF6B" stroke-width="2.5" stroke-linecap="round"/><circle cx="12" cy="12" r="2.4" fill="#C6FF6B"/></svg>
+      </span>
+      <div class="titles">
+        <h1>Safe-to-Spend</h1>
+        <div class="tag">Independent BNPL budgeting prototype · demo data only</div>
+      </div>
+    </div>
+    <button class="btn-reset-top" id="topResetBtn" type="button">Reset all</button>
+  </div>
+</header>
+
+<main class="shell" id="main-content">
+  <div class="layout">
+
+    <!-- INPUT PANEL -->
+    <section class="panel input-panel" aria-labelledby="input-heading">
+      <h2 id="input-heading">Plan a purchase</h2>
+      <p class="panel-sub">Enter demo figures — nothing here is connected to a real account.</p>
+
+      <form id="calcForm" novalidate>
+        <fieldset>
+          <legend>Purchase details</legend>
+          <div class="field" id="field-productName">
+            <label for="productName">Product name</label>
+            <input type="text" id="productName" name="productName" placeholder="e.g. Wireless headphones" autocomplete="off">
+            <div class="field-error">Enter a product name.</div>
+          </div>
+          <div class="field" id="field-productPrice">
+            <label for="productPrice">Product price</label>
+            <input type="number" id="productPrice" name="productPrice" placeholder="0.00" min="0" step="0.01" inputmode="decimal">
+            <div class="field-error">Enter a price of 0 or more.</div>
+          </div>
+          <div class="field" id="field-fee">
+            <label for="fee">Estimated total fee</label>
+            <input type="number" id="fee" name="fee" placeholder="0.00" min="0" step="0.01" inputmode="decimal" value="0">
+            <div class="hint">Illustrative service fee, if any.</div>
+            <div class="field-error">Fee can't be negative.</div>
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend>Installment plan</legend>
+          <div class="installment-grid" id="installmentGrid" role="radiogroup" aria-label="Number of installments"></div>
+        </fieldset>
+
+        <fieldset>
+          <legend>Your budget</legend>
+          <div class="field" id="field-existingCommitments">
+            <label for="existingCommitments">Existing monthly payments</label>
+            <input type="number" id="existingCommitments" name="existingCommitments" placeholder="0.00" min="0" step="0.01" inputmode="decimal" value="0">
+            <div class="field-error">Can't be negative.</div>
+          </div>
+          <div class="field" id="field-monthlyBudget">
+            <label for="monthlyBudget">Personal monthly budget</label>
+            <input type="number" id="monthlyBudget" name="monthlyBudget" placeholder="0.00" min="0" step="0.01" inputmode="decimal">
+            <div class="field-error">Enter a budget greater than 0.</div>
+          </div>
+        </fieldset>
+
+        <button type="submit" class="btn-primary" id="calculateBtn">Calculate impact</button>
+        <button type="button" class="btn-secondary" id="formResetBtn">Reset form</button>
+      </form>
+    </section>
+
+    <!-- RESULTS -->
+    <section class="results" aria-labelledby="results-heading">
+      <h2 id="results-heading" class="visually-hidden">Results</h2>
+
+      <!-- FEATURE 1: DASHBOARD HERO -->
+      <div class="hero-card">
+        <div class="hero-label">Estimated Safe-to-Spend this month</div>
+        <div class="hero-figure" id="heroSafeToSpend">$0.00</div>
+        <div class="hero-note">What's left in your stated budget after existing and new commitments — not a verified bank balance.</div>
+        <span class="hero-badge" id="heroStatusBadge">Enter details to see your status</span>
+
+        <div class="hero-grid">
+          <div>
+            <div class="stat-label">Monthly budget</div>
+            <div class="stat-value" id="heroBudget">$0.00</div>
+          </div>
+          <div>
+            <div class="stat-label">Existing commitments</div>
+            <div class="stat-value" id="heroExisting">$0.00</div>
+          </div>
+          <div>
+            <div class="stat-label">New purchase commitment</div>
+            <div class="stat-value" id="heroNew">$0.00</div>
+          </div>
+          <div>
+            <div class="stat-label">Budget utilization</div>
+            <div class="stat-value" id="heroUtilization">0%</div>
+          </div>
+        </div>
+        <div class="hero-explain">
+          <strong>How this is calculated:</strong> Safe-to-Spend = Monthly budget − (Existing monthly payments + New monthly installment). It uses only the figures you entered and updates instantly when you recalculate.
+        </div>
+      </div>
+
+      <div class="card-grid">
+        <div class="mini-card">
+          <div class="mini-label">New monthly installment</div>
+          <div class="mini-value" id="cardMonthly">$0.00</div>
+        </div>
+        <div class="mini-card">
+          <div class="mini-label">Total payable</div>
+          <div class="mini-value" id="cardTotalPayable">$0.00</div>
+        </div>
+        <div class="mini-card">
+          <div class="mini-label">Remaining budget</div>
+          <div class="mini-value" id="cardRemaining">$0.00</div>
+        </div>
+      </div>
+
+      <!-- FEATURE 6: BUDGET ALERTS -->
+      <div class="panel" aria-labelledby="alerts-heading">
+        <div class="section-title">
+          <h2 id="alerts-heading">Budget alerts</h2>
+          <span class="section-note">Updates with your inputs</span>
+        </div>
+        <div class="alert-list" id="alertList" role="status" aria-live="polite">
+          <div class="empty-alerts">Enter your details and calculate to see any alerts.</div>
+        </div>
+      </div>
+
+      <!-- FEATURE 2: FINANCIAL HEALTH -->
+      <div class="panel" aria-labelledby="health-heading">
+        <div class="section-title">
+          <h2 id="health-heading">Financial health indicator</h2>
+          <span class="status-pill comfortable" id="healthStatusPill" style="display:none;">Comfortable</span>
+        </div>
+        <div class="health-bar-track"><div class="health-bar-fill comfortable" id="healthBarFill" style="width:0%"></div></div>
+        <div class="health-row">
+          <span id="healthUtilLabel">0% of budget committed</span>
+          <span id="healthRemainingLabel">$0.00 remaining</span>
+        </div>
+        <p class="health-explain" id="healthExplain">Commitment level is calculated from (existing + new monthly payments) ÷ monthly budget. Comfortable is up to 50%, Caution is 50–80%, High Commitment is above 80%. This is an illustrative demo threshold, not financial advice.</p>
+      </div>
+
+      <!-- FEATURE 3: SMART RECOMMENDATION -->
+      <div class="panel" aria-labelledby="rec-heading">
+        <div class="section-title">
+          <h2 id="rec-heading">Smart installment recommendation</h2>
+          <span class="section-note">Rule-based, not AI-generated</span>
+        </div>
+        <div class="rec-card" id="recCard">
+          <div class="rec-top">
+            <span class="rec-plan" id="recPlanLabel">Calculate to see a suggestion</span>
+          </div>
+          <div class="rec-reason" id="recReason">Enter your purchase and budget details, then calculate, to compare installment plans against transparent demo rules.</div>
+          <div class="rec-figures" id="recFigures" style="display:none;">
+            <div><span class="rf-label">Monthly installment</span><span class="rf-value" id="recMonthly">$0.00</span></div>
+            <div><span class="rf-label">Total payable</span><span class="rf-value" id="recTotal">$0.00</span></div>
+            <div><span class="rf-label">Budget impact</span><span class="rf-value" id="recImpact">0%</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- FEATURE 4: AI INSIGHTS -->
+      <div class="panel" aria-labelledby="insights-heading">
+        <div class="section-title">
+          <h2 id="insights-heading">AI Financial Insights</h2>
+        </div>
+        <span class="insights-label">Demo Rule-Based Insights</span>
+        <div class="insight-list" id="insightList">
+          <div class="insight-item neutral"><span class="insight-dot"></span><span>Calculate a purchase to generate insights based on the numbers you enter.</span></div>
+        </div>
+      </div>
+
+      <!-- FEATURE 5: PAYMENT TIMELINE -->
+      <div class="panel" aria-labelledby="timeline-heading">
+        <div class="section-title">
+          <h2 id="timeline-heading">Payment timeline</h2>
+          <span class="section-note">Illustrative demo schedule</span>
+        </div>
+        <div class="timeline-wrap">
+          <table class="timeline-table" id="timelineTable">
+            <thead><tr><th>Installment</th><th>Estimated amount</th><th>Period</th></tr></thead>
+            <tbody id="timelineBody"><tr><td colspan="3" style="color:var(--ink-faint);font-weight:500;">Calculate a purchase to generate a timeline.</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- FEATURE 9: ADVANCED WHAT-IF -->
+      <div class="panel" aria-labelledby="whatif-heading">
+        <div class="section-title">
+          <h2 id="whatif-heading">Compare all installment plans</h2>
+          <span class="section-note">Selected plan highlighted</span>
+        </div>
+        <div class="whatif-table-wrap">
+          <table class="whatif-table" id="whatifTable">
+            <thead>
+              <tr><th>Plan</th><th>Monthly</th><th>Total payable</th><th>Remaining budget</th><th>Utilization</th><th>Status</th></tr>
+            </thead>
+            <tbody id="whatifBody"><tr><td colspan="6" style="color:var(--ink-faint);font-weight:500;">Calculate a purchase to compare plans.</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- FEATURE 7: TRANSACTION HISTORY -->
+      <div class="panel" aria-labelledby="txn-heading">
+        <div class="section-title">
+          <h2 id="txn-heading">Transaction history</h2>
+          <button class="btn-small" id="clearTxnBtn" type="button">Clear all</button>
+        </div>
+        <p class="panel-sub" style="margin-bottom:14px;">Demo records saved to this browser only — no bank or server connection.</p>
+        <div class="txn-list" id="txnList"></div>
+      </div>
+
+      <!-- FEATURE 8: SAVINGS GOAL -->
+      <div class="panel" aria-labelledby="goal-heading">
+        <div class="section-title">
+          <h2 id="goal-heading">Savings goal (demo)</h2>
+        </div>
+        <div class="goal-form">
+          <div class="field" style="margin-bottom:0;">
+            <label for="goalName">Goal name</label>
+            <input type="text" id="goalName" placeholder="e.g. Emergency fund">
+          </div>
+          <div class="field" style="margin-bottom:0;">
+            <label for="goalTarget">Target amount</label>
+            <input type="number" id="goalTarget" min="0" step="0.01" placeholder="0.00">
+          </div>
+          <div class="field" style="margin-bottom:0;">
+            <label for="goalSaved">Current saved amount</label>
+            <input type="number" id="goalSaved" min="0" step="0.01" placeholder="0.00">
+          </div>
+        </div>
+
+        <div id="goalDisplay" style="display:none;">
+          <div class="goal-progress-head">
+            <span class="goal-name" id="goalDisplayName">Goal</span>
+            <span class="goal-pct" id="goalDisplayPct">0%</span>
+          </div>
+          <div class="goal-bar-track"><div class="goal-bar-fill" id="goalBarFill" style="width:0%"></div></div>
+          <div class="goal-figures">
+            <div><span class="gf-label">Saved</span><span class="gf-value" id="goalSavedValue">$0.00</span></div>
+            <div><span class="gf-label">Target</span><span class="gf-value" id="goalTargetValue">$0.00</span></div>
+            <div><span class="gf-label">Remaining</span><span class="gf-value" id="goalRemainingValue">$0.00</span></div>
+          </div>
+        </div>
+        <div class="empty-state" id="goalEmptyState">
+          <div class="empty-icon">🎯</div>
+          No savings goal set yet. Fill in the fields above and save your goal.
+        </div>
+
+        <div class="goal-actions">
+          <button class="btn-secondary" id="saveGoalBtn" type="button" style="margin-top:0;">Save / update goal</button>
+          <button class="btn-secondary" id="resetGoalBtn" type="button" style="margin-top:0;">Reset goal</button>
+        </div>
+      </div>
+
+      <!-- FEATURE 10: EXPORT -->
+      <div class="panel" aria-labelledby="export-heading">
+        <div class="section-title">
+          <h2 id="export-heading">Export demo report</h2>
+        </div>
+        <p class="panel-sub" style="margin-bottom:14px;">Downloads only the values shown above — nothing is sent to a server.</p>
+        <div class="export-row">
+          <button class="btn-secondary" id="exportCsvBtn" type="button" style="margin-top:0;">Download CSV</button>
+          <button class="btn-secondary" id="exportTxtBtn" type="button" style="margin-top:0;">Download text report</button>
+        </div>
+      </div>
+
+      <!-- DISCLAIMER -->
+      <div class="disclaimer">
+        <strong>Demo disclaimer.</strong> Safe-to-Spend is an independent, unaffiliated prototype built for a product design exercise. It is not connected to any real bank account, card, or Buy-Now-Pay-Later provider, and it does not represent or verify real customer data. All figures are illustrative, calculated only from the numbers you type in, and stored locally in your browser. Nothing in this tool is financial advice — for real spending and credit decisions, speak with your bank or a licensed financial advisor.
+      </div>
+
+    </section>
+  </div>
+</main>
+
+<div class="toast-region" id="toastRegion" aria-live="polite"></div>
+
+<script>
+(function () {
+  'use strict';
+
+  /* ---------------------------------------------------------------------
+   * CONFIG — documented demo thresholds (illustrative only)
+   * ------------------------------------------------------------------- */
+  var THRESHOLDS = {
+    comfortableMax: 50,   // utilization <= 50%  -> Comfortable
+    cautionMax: 80        // 50% < utilization <= 80% -> Caution; above -> High Commitment
+  };
+  var INSTALLMENT_OPTIONS = [2, 3, 4, 6, 8, 12];
+  var WHATIF_PREVIEW_OPTIONS = [2, 4, 6];
+  var STORAGE_KEYS = {
+    transactions: 'sts_transactions_v1',
+    goal: 'sts_goal_v1'
+  };
+
+  var state = {
+    installments: 3,
+    lastResult: null
+  };
+
+  /* ---------------------------------------------------------------------
+   * UTILITIES
+   * ------------------------------------------------------------------- */
+  function fmtMoney(n) {
+    if (!isFinite(n) || isNaN(n)) return '$0.00';
+    var sign = n < 0 ? '-' : '';
+    return sign + '$' + Math.abs(n).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+  function fmtPct(n) {
+    if (!isFinite(n) || isNaN(n)) return '0%';
+    return Math.round(n * 10) / 10 + '%';
+  }
+  function clampNonNeg(n) { return n < 0 ? 0 : n; }
+  function toNumber(val) {
+    var n = parseFloat(val);
+    return isNaN(n) ? NaN : n;
+  }
+  function escapeHtml(str) {
+    return String(str).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+  function showToast(msg) {
+    var region = document.getElementById('toastRegion');
+    var el = document.createElement('div');
+    el.className = 'toast';
+    el.textContent = msg;
+    region.appendChild(el);
+    setTimeout(function () { el.remove(); }, 2600);
+  }
+  function uid() {
+    return 'txn_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 8);
+  }
+
+  /* ---------------------------------------------------------------------
+   * CORE CALCULATIONS
+   * ------------------------------------------------------------------- */
+  function calculateInstallmentScenario(price, fee, installments, existing, budget) {
+    var totalPayable = price + fee;
+    var monthly = installments > 0 ? totalPayable / installments : NaN;
+    var totalCommitments = existing + monthly;
+    var validBudget = budget > 0;
+    var remaining = validBudget ? budget - totalCommitments : NaN;
+    var utilization = validBudget ? (totalCommitments / budget) * 100 : NaN;
+    return {
+      installments: installments,
+      totalPayable: totalPayable,
+      monthly: monthly,
+      totalCommitments: totalCommitments,
+      remaining: remaining,
+      utilization: utilization,
+      validBudget: validBudget,
+      status: determineFinancialStatus(utilization, validBudget)
+    };
+  }
+
+  function determineFinancialStatus(utilization, validBudget) {
+    if (!validBudget || !isFinite(utilization) || isNaN(utilization)) return 'unknown';
+    if (utilization <= THRESHOLDS.comfortableMax) return 'comfortable';
+    if (utilization <= THRESHOLDS.cautionMax) return 'caution';
+    return 'high';
+  }
+
+  function statusLabel(status) {
+    return { comfortable: 'Comfortable', caution: 'Caution', high: 'High Commitment', unknown: 'Enter a valid budget' }[status] || 'Unknown';
+  }
+
+  function calculatePurchaseImpact(data) {
+    return calculateInstallmentScenario(data.price, data.fee, data.installments, data.existing, data.budget);
+  }
+
+  /* ---------------------------------------------------------------------
+   * VALIDATION
+   * ------------------------------------------------------------------- */
+  function validateInputs(data) {
+    var errors = {};
+    if (!data.productNameRaw || !data.productNameRaw.trim()) errors.productName = 'Enter a product name.';
+    if (isNaN(data.price) || data.price < 0) errors.productPrice = 'Enter a price of 0 or more.';
+    if (isNaN(data.fee) || data.fee < 0) errors.fee = "Fee can't be negative.";
+    if (isNaN(data.existing) || data.existing < 0) errors.existingCommitments = "Can't be negative.";
+    if (isNaN(data.budget) || data.budget <= 0) errors.monthlyBudget = 'Enter a budget greater than 0.';
+    if (INSTALLMENT_OPTIONS.indexOf(data.installments) === -1) errors.installments = 'Select a valid installment plan.';
+    return errors;
+  }
+
+  function clearFieldErrors() {
+    ['productName', 'productPrice', 'fee', 'existingCommitments', 'monthlyBudget'].forEach(function (id) {
+      var wrap = document.getElementById('field-' + id);
+      if (wrap) wrap.classList.remove('has-error');
+    });
+  }
+  function applyFieldErrors(errors) {
+    Object.keys(errors).forEach(function (key) {
+      var wrap = document.getElementById('field-' + key);
+      if (wrap) wrap.classList.add('has-error');
+    });
+  }
+
+  function readFormData() {
+    var priceRaw = document.getElementById('productPrice').value;
+    var feeRaw = document.getElementById('fee').value;
+    var existingRaw = document.getElementById('existingCommitments').value;
+    var budgetRaw = document.getElementById('monthlyBudget').value;
+    return {
+      productNameRaw: document.getElementById('productName').value,
+      productName: document.getElementById('productName').value.trim(),
+      price: toNumber(priceRaw === '' ? NaN : priceRaw),
+      fee: toNumber(feeRaw === '' ? 0 : feeRaw),
+      existing: toNumber(existingRaw === '' ? 0 : existingRaw),
+      budget: toNumber(budgetRaw === '' ? NaN : budgetRaw),
+      installments: state.installments
+    };
+  }
+
+  /* ---------------------------------------------------------------------
+   * INSIGHTS (Feature 4) — rule-based, derived only from entered data
+   * ------------------------------------------------------------------- */
+  function generateFinancialInsights(data, result) {
+    var insights = [];
+
+    if (!result.validBudget) {
+      insights.push({ type: 'high', text: 'Enter a monthly budget greater than zero to generate meaningful insights.' });
+      return insights;
+    }
+
+    var existingShare = data.budget > 0 ? (data.existing / data.budget) * 100 : 0;
+    if (existingShare >= 50) {
+      insights.push({ type: 'caution', text: 'Your existing commitments account for a significant portion of your monthly budget (' + fmtPct(existingShare) + ').' });
+    } else if (existingShare > 0) {
+      insights.push({ type: 'neutral', text: 'Existing commitments currently use ' + fmtPct(existingShare) + ' of your monthly budget before this purchase.' });
+    }
+
+    var twoPlan = calculateInstallmentScenario(data.price, data.fee, 2, data.existing, data.budget);
+    if (data.installments !== 2 && isFinite(twoPlan.monthly)) {
+      var diff = result.monthly - twoPlan.monthly;
+      if (Math.abs(diff) > 0.01) {
+        insights.push({
+          type: 'neutral',
+          text: 'Choosing ' + data.installments + ' installments instead of 2 changes your monthly payment by ' + fmtMoney(diff) + ' per month.'
+        });
+      }
+    }
+
+    if (result.status === 'high') {
+      insights.push({ type: 'high', text: 'This plan pushes your monthly commitments to ' + fmtPct(result.utilization) + ' of your budget. Review your remaining budget before adding another commitment.' });
+    } else if (result.status === 'caution') {
+      insights.push({ type: 'caution', text: 'The selected installment plan brings your budget utilization to ' + fmtPct(result.utilization) + ', which is a moderate commitment level.' });
+    } else if (result.status === 'comfortable') {
+      insights.push({ type: 'positive', text: 'At ' + fmtPct(result.utilization) + ' budget utilization, this plan currently sits in the comfortable range based on the demo thresholds.' });
+    }
+
+    if (result.remaining < 0) {
+      insights.push({ type: 'high', text: 'This plan exceeds your stated monthly budget by ' + fmtMoney(Math.abs(result.remaining)) + '. Consider a longer plan or a lower-cost option.' });
+    }
+
+    if (insights.length === 0) {
+      insights.push({ type: 'neutral', text: 'Your entered figures don\u2019t trigger any specific pattern yet — adjust the plan or budget to see more insights.' });
+    }
+
+    return insights;
+  }
+
+  /* ---------------------------------------------------------------------
+   * SMART RECOMMENDATION (Feature 3)
+   * ------------------------------------------------------------------- */
+  function buildRecommendation(data) {
+    if (isNaN(data.price) || isNaN(data.budget) || data.budget <= 0) return null;
+
+    var scenarios = INSTALLMENT_OPTIONS.map(function (n) {
+      return calculateInstallmentScenario(data.price, data.fee, n, data.existing, data.budget);
+    });
+
+    var withinBudget = scenarios.filter(function (s) { return s.remaining >= 0; });
+    var pool = withinBudget.length > 0 ? withinBudget : scenarios;
+
+    // Rule: prefer the shortest plan (lower total cost impact / shorter repayment period)
+    // among those that fit the budget; if none fit, flag the shortest plan as exceeding budget.
+    var sorted = pool.slice().sort(function (a, b) { return a.installments - b.installments; });
+    var chosen = sorted[0];
+    var fits = chosen.remaining >= 0;
+
+    var reason;
+    if (!withinBudget.length) {
+      reason = 'None of the available plans fit fully within your stated budget. The ' + chosen.installments + '-installment plan has the shortest repayment period, but it still exceeds your budget by ' + fmtMoney(Math.abs(chosen.remaining)) + ' per month.';
+    } else {
+      reason = 'Among plans that fit your budget, ' + chosen.installments + ' installments has the shortest repayment period, which reduces the total time you carry this commitment. A longer plan lowers the monthly payment but keeps the commitment active for more months.';
+    }
+
+    return { scenario: chosen, fits: fits, reason: reason };
+  }
+
+  /* ---------------------------------------------------------------------
+   * PAYMENT TIMELINE (Feature 5) — rounding-safe
+   * ------------------------------------------------------------------- */
+  function buildPaymentTimeline(totalPayable, installments) {
+    var rows = [];
+    if (!isFinite(totalPayable) || installments <= 0) return rows;
+    var base = Math.floor((totalPayable / installments) * 100) / 100;
+    var runningTotal = 0;
+    for (var i = 1; i <= installments; i++) {
+      var amount = base;
+      if (i === installments) {
+        amount = Math.round((totalPayable - runningTotal) * 100) / 100;
+      }
+      runningTotal = Math.round((runningTotal + amount) * 100) / 100;
+      rows.push({ number: i, amount: amount, period: 'Month ' + i + ' (demo schedule)' });
+    }
+    return rows;
+  }
+
+  /* ---------------------------------------------------------------------
+   * BUDGET ALERTS (Feature 6)
+   * ------------------------------------------------------------------- */
+  function buildAlerts(data, errors, result) {
+    var alerts = [];
+
+    if (errors.productName) alerts.push({ level: 'info', title: 'Missing product details', text: 'Add a product name so this purchase can be saved and exported clearly.' });
+    if (errors.monthlyBudget) alerts.push({ level: 'danger', title: 'Invalid budget input', text: 'Monthly budget must be a number greater than zero for calculations to be meaningful.' });
+    if (errors.productPrice) alerts.push({ level: 'danger', title: 'Invalid price', text: 'Product price must be zero or a positive number.' });
+    if (errors.fee) alerts.push({ level: 'danger', title: 'Invalid fee', text: 'Estimated fee cannot be negative.' });
+    if (errors.existingCommitments) alerts.push({ level: 'danger', title: 'Invalid existing payments', text: 'Existing monthly payments cannot be negative.' });
+
+    if (result && result.validBudget) {
+      if (result.remaining < 0) {
+        alerts.push({ level: 'danger', title: 'Remaining budget warning', text: 'This plan would put you ' + fmtMoney(Math.abs(result.remaining)) + ' over your stated monthly budget.' });
+      }
+      if (result.status === 'high') {
+        alerts.push({ level: 'warning', title: 'High monthly commitment', text: 'Total monthly commitments reach ' + fmtPct(result.utilization) + ' of your budget, above the ' + THRESHOLDS.cautionMax + '% demo threshold.' });
+      } else if (result.status === 'caution') {
+        alerts.push({ level: 'warning', title: 'Budget utilization warning', text: 'Total monthly commitments reach ' + fmtPct(result.utilization) + ' of your budget — a moderate commitment level.' });
+      }
+    }
+
+    return alerts;
+  }
+
+  /* ---------------------------------------------------------------------
+   * RENDERING
+   * ------------------------------------------------------------------- */
+  function renderInstallmentChips() {
+    var grid = document.getElementById('installmentGrid');
+    grid.innerHTML = '';
+    INSTALLMENT_OPTIONS.forEach(function (n) {
+      var chip = document.createElement('div');
+      chip.className = 'installment-chip' + (n === state.installments ? ' active' : '');
+      chip.setAttribute('role', 'radio');
+      chip.setAttribute('tabindex', '0');
+      chip.setAttribute('aria-checked', n === state.installments ? 'true' : 'false');
+      chip.innerHTML = n + 'x<span class="chip-sub">installments</span>';
+      chip.addEventListener('click', function () { selectInstallments(n); });
+      chip.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); selectInstallments(n); }
+      });
+      grid.appendChild(chip);
+    });
+  }
+  function selectInstallments(n) {
+    state.installments = n;
+    renderInstallmentChips();
+  }
+
+  function renderHero(data, result) {
+    var statusBadge = document.getElementById('heroStatusBadge');
+    document.getElementById('heroSafeToSpend').textContent = result.validBudget ? fmtMoney(result.remaining) : '$0.00';
+    document.getElementById('heroBudget').textContent = fmtMoney(data.budget || 0);
+    document.getElementById('heroExisting').textContent = fmtMoney(data.existing || 0);
+    document.getElementById('heroNew').textContent = fmtMoney(isFinite(result.monthly) ? result.monthly : 0);
+    document.getElementById('heroUtilization').textContent = result.validBudget ? fmtPct(result.utilization) : '0%';
+
+    statusBadge.className = 'hero-badge status-' + result.status;
+    statusBadge.textContent = result.validBudget ? statusLabel(result.status) + ' · ' + fmtPct(result.utilization) + ' of budget used' : 'Enter a valid budget to see your status';
+
+    document.getElementById('cardMonthly').textContent = fmtMoney(isFinite(result.monthly) ? result.monthly : 0);
+    document.getElementById('cardTotalPayable').textContent = fmtMoney(result.totalPayable || 0);
+    var remainingEl = document.getElementById('cardRemaining');
+    remainingEl.textContent = result.validBudget ? fmtMoney(result.remaining) : '$0.00';
+    remainingEl.className = 'mini-value' + (result.validBudget && result.remaining < 0 ? ' neg' : '');
+  }
+
+  function renderHealth(result) {
+    var pill = document.getElementById('healthStatusPill');
+    var fill = document.getElementById('healthBarFill');
+    var utilLabel = document.getElementById('healthUtilLabel');
+    var remainingLabel = document.getElementById('healthRemainingLabel');
+
+    if (!result.validBudget) {
+      pill.style.display = 'none';
+      fill.style.width = '0%';
+      fill.className = 'health-bar-fill comfortable';
+      utilLabel.textContent = 'Enter a valid budget to see your commitment level';
+      remainingLabel.textContent = '';
+      return;
+    }
+    pill.style.display = 'inline-flex';
+    pill.className = 'status-pill ' + result.status;
+    pill.textContent = statusLabel(result.status);
+    var pct = Math.max(0, Math.min(100, result.utilization));
+    fill.style.width = pct + '%';
+    fill.className = 'health-bar-fill ' + result.status;
+    utilLabel.textContent = fmtPct(result.utilization) + ' of budget committed';
+    remainingLabel.textContent = fmtMoney(result.remaining) + ' remaining';
+  }
+
+  function renderRecommendation(data) {
+    var rec = buildRecommendation(data);
+    var planLabel = document.getElementById('recPlanLabel');
+    var reasonEl = document.getElementById('recReason');
+    var figuresEl = document.getElementById('recFigures');
+
+    if (!rec) {
+      planLabel.textContent = 'Calculate to see a suggestion';
+      reasonEl.textContent = 'Enter your purchase and budget details, then calculate, to compare installment plans against transparent demo rules.';
+      figuresEl.style.display = 'none';
+      return;
+    }
+
+    planLabel.textContent = rec.scenario.installments + '-installment plan' + (rec.fits ? '' : ' (exceeds budget)');
+    reasonEl.textContent = rec.reason;
+    figuresEl.style.display = 'flex';
+    document.getElementById('recMonthly').textContent = fmtMoney(rec.scenario.monthly);
+    document.getElementById('recTotal').textContent = fmtMoney(rec.scenario.totalPayable);
+    document.getElementById('recImpact').textContent = fmtPct(rec.scenario.utilization);
+  }
+
+  function renderInsights(data, result) {
+    var list = document.getElementById('insightList');
+    var insights = generateFinancialInsights(data, result);
+    list.innerHTML = '';
+    insights.forEach(function (ins) {
+      var div = document.createElement('div');
+      div.className = 'insight-item ' + ins.type;
+      div.innerHTML = '<span class="insight-dot"></span><span>' + escapeHtml(ins.text) + '</span>';
+      list.appendChild(div);
+    });
+  }
+
+  function renderTimeline(result) {
+    var body = document.getElementById('timelineBody');
+    var rows = buildPaymentTimeline(result.totalPayable, result.installments);
+    if (!rows.length) {
+      body.innerHTML = '<tr><td colspan="3" style="color:var(--ink-faint);font-weight:500;">Calculate a purchase to generate a timeline.</td></tr>';
+      return;
+    }
+    body.innerHTML = rows.map(function (r) {
+      return '<tr><td>#' + r.number + '</td><td>' + fmtMoney(r.amount) + '</td><td>' + escapeHtml(r.period) + '</td></tr>';
+    }).join('') + '<tr><td>Total</td><td>' + fmtMoney(result.totalPayable) + '</td><td>' + result.installments + ' installments</td></tr>';
+  }
+
+  function renderAlerts(alerts) {
+    var list = document.getElementById('alertList');
+    if (!alerts.length) {
+      list.innerHTML = '<div class="empty-alerts">No alerts right now — your figures look within the demo thresholds.</div>';
+      return;
+    }
+    list.innerHTML = alerts.map(function (a) {
+      var icon = a.level === 'danger' ? '⚠' : a.level === 'warning' ? '!' : 'i';
+      return '<div class="alert-item ' + a.level + '"><span class="alert-icon">' + icon + '</span><span class="alert-text"><strong>' + escapeHtml(a.title) + '</strong><span>' + escapeHtml(a.text) + '</span></span></div>';
+    }).join('');
+  }
+
+  function renderWhatIf(data) {
+    var body = document.getElementById('whatifBody');
+    if (isNaN(data.price) || isNaN(data.budget) || data.budget <= 0) {
+      body.innerHTML = '<tr><td colspan="6" style="color:var(--ink-faint);font-weight:500;">Calculate a purchase to compare plans.</td></tr>';
+      return;
+    }
+    body.innerHTML = INSTALLMENT_OPTIONS.map(function (n) {
+      var s = calculateInstallmentScenario(data.price, data.fee, n, data.existing, data.budget);
+      var selected = n === data.installments;
+      return '<tr class="' + (selected ? 'selected-row' : '') + '">' +
+        '<td>' + n + 'x' + (selected ? ' · Selected' : '') + '</td>' +
+        '<td>' + fmtMoney(s.monthly) + '</td>' +
+        '<td>' + fmtMoney(s.totalPayable) + '</td>' +
+        '<td>' + fmtMoney(s.remaining) + '</td>' +
+        '<td>' + fmtPct(s.utilization) + '</td>' +
+        '<td><span class="status-pill ' + s.status + '">' + statusLabel(s.status) + '</span></td>' +
+        '</tr>';
+    }).join('');
+  }
+
+  /* ---------------------------------------------------------------------
+   * TRANSACTIONS (Feature 7) — localStorage
+   * ------------------------------------------------------------------- */
+  function loadTransactions() {
+    try {
+      var raw = localStorage.getItem(STORAGE_KEYS.transactions);
+      if (!raw) return [];
+      var parsed = JSON.parse(raw);
+      if (!Array.isArray(parsed)) return [];
+      return parsed.filter(function (t) {
+        return t && typeof t.productName === 'string' && isFinite(t.totalPayable) && isFinite(t.monthly) && isFinite(t.installments);
+      });
+    } catch (e) {
+      console.warn('Transaction data could not be read; starting fresh.', e);
+      return [];
+    }
+  }
+  function persistTransactions(list) {
+    try {
+      localStorage.setItem(STORAGE_KEYS.transactions, JSON.stringify(list));
+    } catch (e) {
+      showToast('Could not save — your browser storage may be full or unavailable.');
+    }
+  }
+  function saveTransaction() {
+    if (!state.lastResult) {
+      showToast('Calculate a purchase before saving it.');
+      return;
+    }
+    var data = state.lastResult.data;
+    var result = state.lastResult.result;
+    if (!data.productName) {
+      showToast('Add a product name before saving.');
+      return;
+    }
+    var record = {
+      id: uid(),
+      productName: data.productName,
+      totalPayable: result.totalPayable,
+      installments: result.installments,
+      monthly: result.monthly,
+      savedAt: new Date().toISOString()
+    };
+    var list = loadTransactions();
+    list.unshift(record);
+    persistTransactions(list);
+    renderTransactions();
+    showToast('Purchase saved to demo history.');
+  }
+  function deleteTransaction(id) {
+    var list = loadTransactions().filter(function (t) { return t.id !== id; });
+    persistTransactions(list);
+    renderTransactions();
+  }
+  function clearTransactions() {
+    persistTransactions([]);
+    renderTransactions();
+  }
+  function renderTransactions() {
+    var list = loadTransactions();
+    var container = document.getElementById('txnList');
+    if (!list.length) {
+      container.innerHTML = '<div class="empty-state"><div class="empty-icon">🧾</div>No saved purchases yet. Calculate one above and save it to see it here.</div>';
+      return;
+    }
+    container.innerHTML = list.map(function (t) {
+      var date = new Date(t.savedAt);
+      var dateLabel = isNaN(date.getTime()) ? '' : date.toLocaleDateString();
+      return '<div class="txn-item">' +
+        '<div class="txn-main"><div class="txn-name">' + escapeHtml(t.productName) + '</div>' +
+        '<div class="txn-meta">' + t.installments + ' installments · saved ' + dateLabel + '</div></div>' +
+        '<div class="txn-figures">' +
+        '<div><div class="mini-label" style="margin-bottom:2px;">Monthly</div><div class="txn-total">' + fmtMoney(t.monthly) + '</div></div>' +
+        '<div><div class="mini-label" style="margin-bottom:2px;">Total</div><div class="txn-total">' + fmtMoney(t.totalPayable) + '</div></div>' +
+        '<button class="btn-small" data-delete-id="' + t.id + '" type="button">Delete</button>' +
+        '</div></div>';
+    }).join('');
+
+    container.querySelectorAll('[data-delete-id]').forEach(function (btn) {
+      btn.addEventListener('click', function () { deleteTransaction(btn.getAttribute('data-delete-id')); });
+    });
+  }
+
+  /* ---------------------------------------------------------------------
+   * SAVINGS GOAL (Feature 8) — localStorage
+   * ------------------------------------------------------------------- */
+  function loadGoal() {
+    try {
+      var raw = localStorage.getItem(STORAGE_KEYS.goal);
+      if (!raw) return null;
+      var g = JSON.parse(raw);
+      if (!g || typeof g.name !== 'string' || !isFinite(g.target) || !isFinite(g.saved)) return null;
+      return g;
+    } catch (e) {
+      console.warn('Goal data could not be read.', e);
+      return null;
+    }
+  }
+  function persistGoal(goal) {
+    try { localStorage.setItem(STORAGE_KEYS.goal, JSON.stringify(goal)); }
+    catch (e) { showToast('Could not save your goal — storage unavailable.'); }
+  }
+  function saveSavingsGoal() {
+    var name = document.getElementById('goalName').value.trim();
+    var target = toNumber(document.getElementById('goalTarget').value);
+    var saved = toNumber(document.getElementById('goalSaved').value);
+
+    if (!name) { showToast('Enter a goal name.'); return; }
+    if (isNaN(target) || target <= 0) { showToast('Enter a target amount greater than 0.'); return; }
+    if (isNaN(saved) || saved < 0) { showToast("Saved amount can't be negative."); return; }
+
+    persistGoal({ name: name, target: target, saved: saved });
+    renderGoal();
+    showToast('Savings goal saved.');
+  }
+  function resetSavingsGoal() {
+    try { localStorage.removeItem(STORAGE_KEYS.goal); } catch (e) {}
+    document.getElementById('goalName').value = '';
+    document.getElementById('goalTarget').value = '';
+    document.getElementById('goalSaved').value = '';
+    renderGoal();
+  }
+  function renderGoal() {
+    var goal = loadGoal();
+    var display = document.getElementById('goalDisplay');
+    var empty = document.getElementById('goalEmptyState');
+    if (!goal) {
+      display.style.display = 'none';
+      empty.style.display = 'block';
+      return;
+    }
+    display.style.display = 'block';
+    empty.style.display = 'none';
+
+    document.getElementById('goalName').value = goal.name;
+    document.getElementById('goalTarget').value = goal.target;
+    document.getElementById('goalSaved').value = goal.saved;
+
+    var pct = goal.target > 0 ? Math.max(0, Math.min(100, (goal.saved / goal.target) * 100)) : 0;
+    var remaining = clampNonNeg(goal.target - goal.saved);
+
+    document.getElementById('goalDisplayName').textContent = goal.name;
+    document.getElementById('goalDisplayPct').textContent = Math.round(pct) + '%';
+    document.getElementById('goalBarFill').style.width = pct + '%';
+    document.getElementById('goalSavedValue').textContent = fmtMoney(goal.saved);
+    document.getElementById('goalTargetValue').textContent = fmtMoney(goal.target);
+    document.getElementById('goalRemainingValue').textContent = fmtMoney(remaining);
+  }
+
+  /* ---------------------------------------------------------------------
+   * EXPORT (Feature 10)
+   * ------------------------------------------------------------------- */
+  function buildReportRows() {
+    if (!state.lastResult) return null;
+    var data = state.lastResult.data;
+    var result = state.lastResult.result;
+    var insights = generateFinancialInsights(data, result);
+    return [
+      ['Product name', data.productName || '(not set)'],
+      ['Product price', fmtMoney(data.price || 0)],
+      ['Estimated fee', fmtMoney(data.fee || 0)],
+      ['Total payable', fmtMoney(result.totalPayable)],
+      ['Selected installment plan', result.installments + ' installments'],
+      ['Monthly installment', fmtMoney(result.monthly)],
+      ['Existing commitments', fmtMoney(data.existing || 0)],
+      ['Monthly budget', fmtMoney(data.budget || 0)],
+      ['Remaining budget', result.validBudget ? fmtMoney(result.remaining) : 'N/A'],
+      ['Budget utilization', result.validBudget ? fmtPct(result.utilization) : 'N/A'],
+      ['Financial status', statusLabel(result.status)],
+      ['Insights', insights.map(function (i) { return i.text; }).join(' | ')]
+    ];
+  }
+  function downloadBlob(content, filename, mime) {
+    var blob = new Blob([content], { type: mime });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url; a.download = filename;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function () { URL.revokeObjectURL(url); }, 500);
+  }
+  function exportReport(format) {
+    var rows = buildReportRows();
+    if (!rows) { showToast('Calculate a purchase before exporting.'); return; }
+    var stamp = new Date().toISOString().slice(0, 10);
+    if (format === 'csv') {
+      var csv = 'Field,Value\n' + rows.map(function (r) {
+        return '"' + r[0].replace(/"/g, '""') + '","' + String(r[1]).replace(/"/g, '""') + '"';
+      }).join('\n');
+      downloadBlob(csv, 'safe-to-spend-report-' + stamp + '.csv', 'text/csv');
+    } else {
+      var txt = 'SAFE-TO-SPEND — DEMO REPORT\nGenerated: ' + new Date().toLocaleString() +
+        '\nThis is an illustrative demo report, not a real financial statement.\n\n' +
+        rows.map(function (r) { return r[0] + ': ' + r[1]; }).join('\n');
+      downloadBlob(txt, 'safe-to-spend-report-' + stamp + '.txt', 'text/plain');
+    }
+    showToast('Report downloaded.');
+  }
+
+  /* ---------------------------------------------------------------------
+   * MAIN CALCULATE / RESET
+   * ------------------------------------------------------------------- */
+  function runCalculation(showValidation) {
+    var data = readFormData();
+    var errors = validateInputs(data);
+
+    clearFieldErrors();
+    if (showValidation) applyFieldErrors(errors);
+
+    var safeData = {
+      productName: data.productName,
+      price: isNaN(data.price) ? 0 : clampNonNeg(data.price),
+      fee: isNaN(data.fee) ? 0 : clampNonNeg(data.fee),
+      existing: isNaN(data.existing) ? 0 : clampNonNeg(data.existing),
+      budget: isNaN(data.budget) ? 0 : clampNonNeg(data.budget),
+      installments: data.installments
+    };
+
+    var result = calculatePurchaseImpact(safeData);
+    var alerts = buildAlerts(safeData, errors, result);
+
+    renderHero(safeData, result);
+    renderHealth(result);
+    renderRecommendation(safeData);
+    renderInsights(safeData, result);
+    renderTimeline(result);
+    renderAlerts(alerts);
+    renderWhatIf(safeData);
+
+    if (Object.keys(errors).length === 0) {
+      state.lastResult = { data: safeData, result: result };
+    } else {
+      state.lastResult = null;
+    }
+
+    return { errors: errors, result: result };
+  }
+
+  function resetAll() {
+    document.getElementById('calcForm').reset();
+    document.getElementById('fee').value = '0';
+    document.getElementById('existingCommitments').value = '0';
+    state.installments = 3;
+    state.lastResult = null;
+    clearFieldErrors();
+    renderInstallmentChips();
+    runCalculation(false);
+    showToast('Form reset.');
+  }
+
+  /* ---------------------------------------------------------------------
+   * EVENT WIRING
+   * ------------------------------------------------------------------- */
+  document.getElementById('calcForm').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var outcome = runCalculation(true);
+    if (Object.keys(outcome.errors).length > 0) {
+      showToast('Please fix the highlighted fields.');
+    } else {
+      showToast('Calculated.');
+    }
+  });
+
+  document.getElementById('formResetBtn').addEventListener('click', resetAll);
+  document.getElementById('topResetBtn').addEventListener('click', resetAll);
+
+  document.getElementById('clearTxnBtn').addEventListener('click', function () {
+    clearTransactions();
+    showToast('Transaction history cleared.');
+  });
+
+  document.getElementById('saveGoalBtn').addEventListener('click', saveSavingsGoal);
+  document.getElementById('resetGoalBtn').addEventListener('click', resetSavingsGoal);
+
+  document.getElementById('exportCsvBtn').addEventListener('click', function () { exportReport('csv'); });
+  document.getElementById('exportTxtBtn').addEventListener('click', function () { exportReport('txt'); });
+
+  // Save-transaction affordance lives conceptually with Calculate; add a save action
+  // by listening for a dedicated click target injected into the hero card area.
+  (function addSaveButtonToHero() {
+    var heroCard = document.querySelector('.hero-card');
+    var saveBtn = document.createElement('button');
+    saveBtn.type = 'button';
+    saveBtn.className = 'btn-small primary-small';
+    saveBtn.style.marginTop = '14px';
+    saveBtn.textContent = 'Save this purchase to history';
+    saveBtn.addEventListener('click', saveTransaction);
+    heroCard.appendChild(saveBtn);
+  })();
+
+  /* ---------------------------------------------------------------------
+   * INIT
+   * ------------------------------------------------------------------- */
+  renderInstallmentChips();
+  runCalculation(false);
+  renderTransactions();
+  renderGoal();
+})();
+</script>
+</body>
+</html>
